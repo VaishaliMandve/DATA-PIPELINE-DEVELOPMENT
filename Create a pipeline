@@ -1,0 +1,56 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.datasets import load_iris
+
+# Load sample dataset
+data = load_iris(as_frame=True)
+df = data.frame
+
+# Simulate preprocessing: Add some missing values
+df.loc[0:5, 'sepal length (cm)'] = None
+
+# 1. Define Features and Target
+X = df.drop(columns=['target'])
+y = df['target']
+
+# 2. Identify column types
+numeric_features = X.select_dtypes(include=['float64', 'int']).columns.tolist()
+categorical_features = X.select_dtypes(include=['object', 'category']).columns.tolist()
+
+# 3. Build Preprocessing Pipeline
+numeric_transformer = Pipeline(steps=[
+    ("imputer", SimpleImputer(strategy="mean")),
+    ("scaler", StandardScaler())
+])
+
+categorical_transformer = Pipeline(steps=[
+    ("imputer", SimpleImputer(strategy="most_frequent")),
+    ("onehot", OneHotEncoder(handle_unknown="ignore"))
+])
+
+preprocessor = ColumnTransformer(transformers=[
+    ("num", numeric_transformer, numeric_features),
+    ("cat", categorical_transformer, categorical_features)
+])
+
+# 4. Combine Preprocessing and Modeling into Pipeline
+pipeline = Pipeline(steps=[
+    ("preprocessor", preprocessor)
+])
+
+# 5. Split the data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 6. Apply transformations
+X_train_transformed = pipeline.fit_transform(X_train)
+X_test_transformed = pipeline.transform(X_test)
+
+# 7. Load into CSV (simulating loading into a target system)
+pd.DataFrame(X_train_transformed).to_csv("preprocessed_train.csv", index=False)
+pd.DataFrame(X_test_transformed).to_csv("preprocessed_test.csv", index=False)
+
+print("✅ Data pipeline completed: preprocessing, transformation, and loading to CSV.")
